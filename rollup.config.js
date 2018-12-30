@@ -2,6 +2,7 @@ import nodeResolve from "rollup-plugin-node-resolve";
 import commonjs from "rollup-plugin-commonjs";
 import json from 'rollup-plugin-json';
 import typescript from 'rollup-plugin-typescript2';
+import builtins from 'rollup-plugin-node-builtins';
 import pkg from './package.json'
 
 const config = {
@@ -17,10 +18,9 @@ const config = {
         }
     ],
     plugins: [
+        builtins(),
         json(),
-        nodeResolve({
-            module: true
-        }),
+        nodeResolve(),
         commonjs(),
         typescript()
     ],

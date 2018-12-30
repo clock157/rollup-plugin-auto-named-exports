@@ -2,17 +2,13 @@ import esquery from 'esquery';
 import { get as _get } from 'lodash';
 import MagicString from 'magic-string';
 import { makeLegalIdentifier, createFilter } from 'rollup-pluginutils';
-import * as crypto from 'crypto';
+import { createHash } from 'crypto';
 import { extname } from 'path';
 
 // it's should be verify that treating it as commonjs plugin coverted flag.
 const COMMONJS_CONVERTED_FLAG = '__moduleExports';
 
-export interface IProperties {
-  key: {
-    name: string;
-  };
-}
+type nodeValueType = 'ObjectExpression' | 'Identifier' | 'CallExpression';
 
 export interface IOptions {
   sourceMap?: boolean;
@@ -30,6 +26,17 @@ export interface IExportedItem {
   };
 }
 
+export interface IProperties {
+  key: {
+    name: string;
+  };
+}
+
+export interface INodeValue {
+  type: nodeValueType;
+  properties?: IProperties[];
+}
+
 /**
  * avoid var conflict
  * @param file module id
@@ -37,8 +44,7 @@ export interface IExportedItem {
  * @param maxLength max hash length
  */
 function hashString(file: string, name: string, maxLength: number = 5): string {
-  return crypto
-    .createHash('md5')
+  return createHash('md5')
     .update(`${file}__${name}`)
     .digest('base64')
     .substr(0, maxLength);
@@ -49,7 +55,7 @@ function hashString(file: string, name: string, maxLength: number = 5): string {
  * @param ast
  * @param name
  */
-function findDeclareSourceNode(ast: any, name: string): IProperties[] | undefined {
+function findDeclareSourceNode(ast: any, name: string): INodeValue | undefined {
   const [found] = esquery(ast, `VariableDeclarator[id.name=${name}]`);
   const init = _get(found, 'init');
   if (!init) {
@@ -58,7 +64,9 @@ function findDeclareSourceNode(ast: any, name: string): IProperties[] | undefine
   if (init.type === 'Identifier') {
     return findDeclareSourceNode(ast, init.name);
   } else if (init.type === 'ObjectExpression') {
-    return init.properties;
+    return init;
+  } else if (init.type === 'CallExpression') {
+    // TODO
   }
 }
 
@@ -79,10 +87,17 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
 
   return {
     name: 'autoNamedExport',
+    load(id: string) {
+      // console.log(id);
+    },
     transform(code: any, id: string) {
       if (!filter(id) || extensions.indexOf(extname(id)) === -1) {
         return null;
       }
+
+      // if(id.indexOf("node_modules/_classnames@2.2.6@classnames/index.js") !== -1) {
+      //   console.log(code);
+      // }
 
       const { sourceMap } = options;
       const magicString = new MagicString(code);
@@ -90,7 +105,8 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
       // find converted flag by commonjs plugin, we auto named export base on that.
       const commonjsExported = findExportedNode(ast, COMMONJS_CONVERTED_FLAG);
       const moduleName = _get(commonjsExported, 'local.name');
-      const properties = findDeclareSourceNode(ast, moduleName);
+      const nodeValue = findDeclareSourceNode(ast, moduleName);
+      const properties = _get(nodeValue, 'properties');
       if (properties) {
         properties.forEach((item: IProperties) => {
           const { name } = item.key;
@@ -98,7 +114,7 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
           if (!findExportedNode(ast, name)) {
             const hashedName = makeLegalIdentifier(`${name}_${hashString(id, name)}`);
             magicString.append(
-              `\nvar ${hashedName} = ${moduleName}.${name}\nexport { ${hashedName} as ${name} }\n`,
+              `\nvar ${hashedName} = ${name} \nexport { ${hashedName} as ${name} }\n`,
             );
           }
         });
@@ -108,6 +124,7 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
           map: sourceMap ? magicString.generateMap() : null,
         };
       }
+
       return null;
     },
   };
