@@ -87,10 +87,7 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
 
   return {
     name: 'autoNamedExport',
-    load(id: string) {
-      // console.log(id);
-    },
-    transform(code: any, id: string) {
+    transform(code: string, id: string) {
       if (!filter(id) || extensions.indexOf(extname(id)) === -1) {
         return null;
       }
