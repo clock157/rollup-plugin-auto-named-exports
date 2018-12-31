@@ -1,0 +1,55 @@
+{
+  "name": "rollup-plugin-auto-named-exports",
+  "version": "1.0.0-beta.1",
+  "description": "Base on rollup-plugin-commonjs, auto fix Error: \"[name] is not exported by [module]\"",
+  "main": "lib/index.cjs.js",
+  "module": "lib/index.es.js",
+  "scripts": {
+    "dev": "NODE_ENV=development rollup -c -w",
+    "build": "NODE_ENV=development rollup -c",
+    "lint": "tslint -p tsconfig.json",
+    "precommit": "lint-staged",
+    "prepublishOnly": "rm -rf ./lib && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/umijs/rollup-plugin-auto-named-exports.git"
+  },
+  "author": "clock157 (clock157@163.com)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/umijs/rollup-plugin-auto-named-exports/issues"
+  },
+  "homepage": "https://github.com/umijs/rollup-plugin-auto-named-exports#readme",
+  "devDependencies": {
+    "@types/lodash": "^4.14.119",
+    "@types/node": "^10.12.18",
+    "husky": "^0.14.3",
+    "lint-staged": "^8.1.0",
+    "prettier": "^1.15.3",
+    "rollup": "^1.0.0",
+    "rollup-plugin-commonjs": "^9.2.0",
+    "rollup-plugin-json": "^3.1.0",
+    "rollup-plugin-node-resolve": "^4.0.0",
+    "rollup-plugin-typescript2": "^0.18.1",
+    "tslint": "^5.12.0",
+    "tslint-config-prettier": "^1.17.0",
+    "typescript": "^3.2.2"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "tslint -p tsconfig.json --fix",
+      "git add"
+    ]
+  },
+  "types": "lib/index.d.ts",
+  "dependencies": {
+    "esquery": "^1.0.1",
+    "estree-walker": "^0.6.0",
+    "lodash": "^4.17.11",
+    "magic-string": "^0.25.1",
+    "rollup-plugin-node-builtins": "^2.1.2",
+    "rollup-pluginutils": "^2.3.3"
+  }
+}
