@@ -32,9 +32,19 @@ export interface IProperties {
   };
 }
 
+export interface IMembers {
+  object: {
+    name: string;
+  };
+  property: {
+    name: string;
+  };
+}
+
 export interface INodeValue {
   type: nodeValueType;
   properties?: IProperties[];
+  members?: IMembers[];
 }
 
 /**
@@ -64,7 +74,12 @@ function findDeclareSourceNode(ast: any, name: string): INodeValue | undefined {
   if (init.type === 'Identifier') {
     return findDeclareSourceNode(ast, init.name);
   } else if (init.type === 'ObjectExpression') {
-    return init;
+    // find member like: x.routerRedux = require$$0;
+    const members = esquery(ast, `ExpressionStatement [object.name=${name}][computed=false]`);
+    return {
+      ...init,
+      members,
+    };
   } else if (init.type === 'CallExpression') {
     // TODO
   }
@@ -81,6 +96,16 @@ function findExportedNode(ast: any, name: string): IExportedItem | undefined {
   return exported;
 }
 
+function appendExport(id: string, name: string, moduleName: string, ast: any, magicString: any) {
+  // avoid duplicate export
+  if (!findExportedNode(ast, name)) {
+    const hashedName = makeLegalIdentifier(`${name}_${hashString(id, name)}`);
+    magicString.append(
+      `\nvar ${hashedName} = ${moduleName}.${name} \nexport { ${hashedName} as ${name} }\n`,
+    );
+  }
+}
+
 export default function namedExport(options: IOptions = { sourceMap: false }) {
   const extensions = options.extensions || ['.js'];
   const filter = createFilter(options.include, options.exclude);
@@ -92,7 +117,7 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
         return null;
       }
 
-      // if(id.indexOf("node_modules/_classnames@2.2.6@classnames/index.js") !== -1) {
+      // if(id.indexOf("node_modules/_@alipay_umi-plugin-bigfish@2.8.1-1@@alipay/umi-plugin-bigfish/lib/plugins/bigfishSdk/router.js") !== -1) {
       //   console.log(code);
       // }
 
@@ -107,15 +132,19 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
       if (properties) {
         properties.forEach((item: IProperties) => {
           const { name } = item.key;
-          // avoid duplicate export
-          if (!findExportedNode(ast, name)) {
-            const hashedName = makeLegalIdentifier(`${name}_${hashString(id, name)}`);
-            magicString.append(
-              `\nvar ${hashedName} = ${name} \nexport { ${hashedName} as ${name} }\n`,
-            );
-          }
+          appendExport(id, name, moduleName, ast, magicString);
         });
+      }
 
+      const members = _get(nodeValue, 'members');
+      if (members) {
+        members.forEach((item: IMembers) => {
+          const { name } = item.property;
+          appendExport(id, name, moduleName, ast, magicString);
+        });
+      }
+
+      if (properties || members) {
         return {
           code: magicString.toString(),
           map: sourceMap ? magicString.generateMap() : null,
