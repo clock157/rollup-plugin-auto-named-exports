@@ -75,7 +75,10 @@ function findDeclareSourceNode(ast: any, name: string): INodeValue | undefined {
     return findDeclareSourceNode(ast, init.name);
   } else if (init.type === 'ObjectExpression') {
     // find member like: x.routerRedux = require$$0;
-    const members = esquery(ast, `ExpressionStatement [object.name=${name}][computed=false]`);
+    const members = esquery(
+      ast,
+      `AssignmentExpression > MemberExpression > [object.name=${name}][computed=false]`,
+    );
     return {
       ...init,
       members,
@@ -117,7 +120,7 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
         return null;
       }
 
-      // if(id.indexOf("node_modules/_@alipay_umi-plugin-bigfish@2.8.1-1@@alipay/umi-plugin-bigfish/lib/plugins/bigfishSdk/router.js") !== -1) {
+      // if (id.indexOf('ules/draft-js/lib/DraftEditorCompositionHandler.js') !== -1) {
       //   console.log(code);
       // }
 
