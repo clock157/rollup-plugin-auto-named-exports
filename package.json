@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-auto-named-exports",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "Base on rollup-plugin-commonjs, auto fix Error: \"[name] is not exported by [module]\"",
   "main": "lib/index.cjs.js",
   "module": "lib/index.es.js",
