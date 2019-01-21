@@ -47,6 +47,10 @@ export interface INodeValue {
   members?: IMembers[];
 }
 
+export interface IAppendList {
+  [prop: string]: boolean;
+}
+
 /**
  * avoid var conflict
  * @param file module id
@@ -99,13 +103,24 @@ function findExportedNode(ast: any, name: string): IExportedItem | undefined {
   return exported;
 }
 
-function appendExport(id: string, name: string, moduleName: string, ast: any, magicString: any) {
+function appendExport(
+  id: string,
+  name: string,
+  moduleName: string,
+  ast: any,
+  magicString: any,
+  appendList: IAppendList,
+) {
   // avoid duplicate export
   if (!findExportedNode(ast, name)) {
     const hashedName = makeLegalIdentifier(`${name}_${hashString(id, name)}`);
-    magicString.append(
-      `\nvar ${hashedName} = ${moduleName}.${name} \nexport { ${hashedName} as ${name} }\n`,
-    );
+    // magicString 插入后未插入 ast, 所以可能导致重复定义, 需要判断.
+    if (!appendList[hashedName]) {
+      magicString.append(
+        `\nvar ${hashedName} = ${moduleName}.${name} \nexport { ${hashedName} as ${name} }\n`,
+      );
+      appendList[hashedName] = true;
+    }
   }
 }
 
@@ -124,6 +139,8 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
       //   console.log(code);
       // }
 
+      // 防止重复定义
+      const appendList = {};
       const { sourceMap } = options;
       const magicString = new MagicString(code);
       const ast = this.parse(code);
@@ -135,7 +152,7 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
       if (properties) {
         properties.forEach((item: IProperties) => {
           const { name } = item.key;
-          appendExport(id, name, moduleName, ast, magicString);
+          appendExport(id, name, moduleName, ast, magicString, appendList);
         });
       }
 
@@ -143,7 +160,7 @@ export default function namedExport(options: IOptions = { sourceMap: false }) {
       if (members) {
         members.forEach((item: IMembers) => {
           const { name } = item.property;
-          appendExport(id, name, moduleName, ast, magicString);
+          appendExport(id, name, moduleName, ast, magicString, appendList);
         });
       }
 
